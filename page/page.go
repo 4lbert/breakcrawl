@@ -34,7 +34,7 @@ func PrintPage(link *url.URL, doc *goquery.Document) {
 			path = path[:i]
 		}
 
-		if path == "artikel" {
+		if path == "artikel" && link.Hostname() == "www.breakit.se" {
 			printArticle(link, doc)
 		}
 	}
