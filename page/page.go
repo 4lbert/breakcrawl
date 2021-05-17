@@ -17,7 +17,11 @@ func printArticle(link *url.URL, doc *goquery.Document) {
 	fmt.Println(getText(doc, "time"))
 	fmt.Println(getText(doc, "h1"))
 	fmt.Println(getText(doc, "h4"))
-	fmt.Println(getText(doc, ".js-article-body"))
+	text := getText(doc, ".js-article-body")
+	if i := strings.IndexByte(text, '\n'); i != -1 {
+		text = text[:i]
+	}
+	fmt.Println(text)
 	fmt.Println("--------")
 }
 
