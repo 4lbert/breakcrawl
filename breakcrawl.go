@@ -2,32 +2,13 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
+	"github.com/4lbert/breakcrawl/page"
 	"github.com/PuerkitoBio/goquery"
 )
-
-func printArticle(link string, doc *goquery.Document) {
-	fmt.Println(link)
-	time := doc.Find("time").First().Text()
-	fmt.Println(strings.TrimSpace(time))
-	h1 := doc.Find("h1").First().Text()
-	fmt.Println(strings.TrimSpace(h1))
-	h4 := doc.Find("h4").First().Text()
-	fmt.Println(strings.TrimSpace(h4))
-	text := doc.Find(".js-article-body").First().Text()
-	text = strings.TrimSpace(text)
-	paragraphs := strings.Split(text, "\n")
-	if len(paragraphs) > 0 {
-		text = paragraphs[0]
-	}
-	fmt.Println(text)
-	fmt.Println("--------")
-}
 
 var visited = make(map[string]bool)
 
@@ -49,22 +30,10 @@ func visit(link *url.URL, depth uint, max uint) {
 		return
 	}
 
-	path := strings.Split(link.Path, "/")
-	if len(path) > 1 && path[1] == "artikel" {
-		printArticle(linkStr, doc)
-	}
+	page.PrintPage(link, doc)
 
 	if depth < max {
-		doc.Find("a").Each(func(i int, s *goquery.Selection) {
-			href, exists := s.Attr("href")
-			if exists == false {
-				return
-			}
-			next, err := link.Parse(href)
-			if err != nil {
-				return
-			}
-
+		page.ForEachLink(link, doc, func(next *url.URL) {
 			visit(next, depth+1, max)
 		})
 	}
