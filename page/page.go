@@ -1,31 +1,46 @@
 package page
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
+type Info struct {
+	url, time, h1, h4, text string
+}
+
+func (i *Info) String() string {
+	return strings.Join([]string{
+		i.url,
+		i.time,
+		i.h1,
+		i.h4,
+		i.text,
+		"--------",
+	}, "\n")
+}
+
 func getText(doc *goquery.Document, s string) string {
 	return strings.TrimSpace(doc.Find(s).First().Text())
 }
 
-func printArticle(link *url.URL, doc *goquery.Document) {
-	fmt.Println(link.String())
-	fmt.Println(getText(doc, "time"))
-	fmt.Println(getText(doc, "h1"))
-	fmt.Println(getText(doc, "h4"))
+func getInfo(link *url.URL, doc *goquery.Document) *Info {
 	text := getText(doc, ".js-article-body")
 	if i := strings.IndexByte(text, '\n'); i != -1 {
 		text = text[:i]
 	}
-	fmt.Println(text)
-	fmt.Println("--------")
+	return &Info{
+		link.String(),
+		getText(doc, "time"),
+		getText(doc, "h1"),
+		getText(doc, "h4"),
+		text,
+	}
 }
 
-func PrintPage(link *url.URL, doc *goquery.Document) {
+func PageInfo(link *url.URL, doc *goquery.Document) *Info {
 	path := link.Path
 	if len(path) > 0 {
 		path = path[1:]
@@ -35,9 +50,10 @@ func PrintPage(link *url.URL, doc *goquery.Document) {
 		}
 
 		if path == "artikel" && link.Hostname() == "www.breakit.se" {
-			printArticle(link, doc)
+			return getInfo(link, doc)
 		}
 	}
+	return nil
 }
 
 func ForEachLink(link *url.URL, doc *goquery.Document, fn func(next *url.URL)) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,18 +11,17 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+type Visit struct {
+	url   *url.URL
+	depth uint
+}
+
 var maxDepth uint = 1
 
 var visited = make(map[string]bool)
 
-func visit(link *url.URL, depth uint) {
-	linkStr := link.String()
-	if _, ok := visited[linkStr]; ok {
-		return
-	}
-	visited[linkStr] = true
-
-	res, err := http.Get(linkStr)
+func visit(link *url.URL, depth uint, infoOut chan *page.Info, nextOut chan Visit) {
+	res, err := http.Get(link.String())
 	if err != nil {
 		return
 	}
@@ -32,11 +32,13 @@ func visit(link *url.URL, depth uint) {
 		return
 	}
 
-	page.PrintPage(link, doc)
+	if info := page.PageInfo(link, doc); info != nil {
+		infoOut <- info
+	}
 
 	if depth < maxDepth {
 		page.ForEachLink(link, doc, func(next *url.URL) {
-			visit(next, depth+1)
+			nextOut <- Visit{next, depth + 1}
 		})
 	}
 }
@@ -49,5 +51,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	visit(link, 0)
+
+	info := make(chan *page.Info)
+	next := make(chan Visit)
+
+	go visit(link, 0, info, next)
+
+	for {
+		select {
+		case i := <-info:
+			fmt.Println(i)
+		case n := <-next:
+			s := n.url.String()
+			if _, ok := visited[s]; !ok {
+				go visit(n.url, n.depth, info, next)
+				visited[s] = true
+			}
+		}
+	}
 }
