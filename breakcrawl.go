@@ -11,14 +11,12 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+var maxDepth uint = 1
+
 type Visit struct {
 	url   *url.URL
 	depth uint
 }
-
-var maxDepth uint = 1
-
-var visited = make(map[string]bool)
 
 func visit(link *url.URL, depth uint, infoOut chan *page.Info, nextOut chan Visit) {
 	res, err := http.Get(link.String())
@@ -32,9 +30,7 @@ func visit(link *url.URL, depth uint, infoOut chan *page.Info, nextOut chan Visi
 		return
 	}
 
-	if info := page.PageInfo(link, doc); info != nil {
-		infoOut <- info
-	}
+	infoOut <- page.PageInfo(link, doc)
 
 	if depth < maxDepth {
 		page.ForEachLink(link, doc, func(next *url.URL) {
@@ -44,14 +40,18 @@ func visit(link *url.URL, depth uint, infoOut chan *page.Info, nextOut chan Visi
 }
 
 func main() {
-	flag.UintVar(&maxDepth, "d", 1, "the depth of the link traversal")
+	flag.UintVar(&maxDepth, "d", 1, "maximum depth of the link traversal")
+	maxConcurrent := flag.Uint("p", 8, "maximum number of concurrent outstanding requests")
 	flag.Parse()
+
+	fmt.Println(*maxConcurrent)
 
 	link, err := url.Parse("https://www.breakit.se")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	visited := make(map[string]bool)
 	info := make(chan *page.Info)
 	next := make(chan Visit)
 
@@ -60,7 +60,9 @@ func main() {
 	for {
 		select {
 		case i := <-info:
-			fmt.Println(i)
+			if i != nil {
+				fmt.Println(i)
+			}
 		case n := <-next:
 			s := n.url.String()
 			if _, ok := visited[s]; !ok {
